@@ -33,10 +33,7 @@ def find_relevant_dirs(root):
     for d in sorted(os.listdir(root)):
         d = os.path.join(root, d)
         if os.path.isdir(d):
-            if contains_relevant_files(d):
-                relevant_dirs += [d]
-            else:
-                relevant_dirs += find_relevant_dirs(d)
+            relevant_dirs += [d] if contains_relevant_files(d) else find_relevant_dirs(d)
     return relevant_dirs
 
 
@@ -85,10 +82,10 @@ def evaluate_algorithm(gt, frames, algo, algo_arguments):
 def evaluate_on_sequence(seq, summary):
     gt, frames = load_sequence(seq)
     category, video_name = os.path.basename(os.path.dirname(seq)), os.path.basename(seq)
-    print('=== %s:%s ===' % (category, video_name))
+    print(f'=== {category}:{video_name} ===')
 
     for algo, algo_name, algo_arguments in ALGORITHMS_TO_EVALUATE:
-        print('Algorithm name: %s' % algo_name)
+        print(f'Algorithm name: {algo_name}')
         sec_per_step, precision, recall, f1, accuracy = evaluate_algorithm(gt, frames, algo, algo_arguments)
         print('Average accuracy: %.3f' % accuracy)
         print('Average precision: %.3f' % precision)
@@ -111,7 +108,9 @@ def main():
 
     args = parser.parse_args()
     dataset_dirs = find_relevant_dirs(args.dataset_path)
-    assert len(dataset_dirs) > 0, ("Passed directory must contain at least one sequence from the Change Detection dataset. There is no relevant directories in %s. Check that this directory is correct." % (args.dataset_path))
+    assert (
+        len(dataset_dirs) > 0
+    ), f"Passed directory must contain at least one sequence from the Change Detection dataset. There is no relevant directories in {args.dataset_path}. Check that this directory is correct."
     if args.algorithm is not None:
         global ALGORITHMS_TO_EVALUATE
         ALGORITHMS_TO_EVALUATE = filter(lambda a: a[1].lower() == args.algorithm.lower(), ALGORITHMS_TO_EVALUATE)
@@ -125,7 +124,7 @@ def main():
             summary[category][algo_name] = np.mean(summary[category][algo_name], axis=0)
 
     for category in summary:
-        print('=== SUMMARY for %s (Precision, Recall, F1, Accuracy) ===' % category)
+        print(f'=== SUMMARY for {category} (Precision, Recall, F1, Accuracy) ===')
         for algo_name in summary[category]:
             print('%05s: %.3f %.3f %.3f %.3f' % ((algo_name,) + tuple(summary[category][algo_name])))
 

@@ -15,7 +15,7 @@ def substitute(cv, output_dir):
     template = jtemplate.get_template('template_cvmex_base.m')
 
     # create the build directory
-    output_dir  = output_dir+'/+cv'
+    output_dir = f'{output_dir}/+cv'
     if not os.path.isdir(output_dir):
       os.mkdir(output_dir)
 

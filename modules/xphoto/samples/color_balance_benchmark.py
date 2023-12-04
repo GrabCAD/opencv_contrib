@@ -10,17 +10,15 @@ from learn_color_balance import load_ground_truth
 
 def load_json(path):
     f = open(path, "r")
-    data = json.load(f)
-    return data
+    return json.load(f)
 
 
 def save_json(obj, path):
-    tmp_file = path + ".bak"
-    f = open(tmp_file, "w")
-    json.dump(obj, f, indent=2)
-    f.flush()
-    os.fsync(f.fileno())
-    f.close()
+    tmp_file = f"{path}.bak"
+    with open(tmp_file, "w") as f:
+        json.dump(obj, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
     try:
         os.rename(tmp_file, path)
     except:
@@ -112,7 +110,7 @@ def build_html_table(out, state, stat_list, img_range):
                  '      <th align="center" valign="top"> Average Time </th>\n']
     for stat in stat_list:
         if stat not in stat_dict.keys():
-            print("Error: unsupported statistic " + stat)
+            print(f"Error: unsupported statistic {stat}")
             sys.exit(1)
         html_out += ['      <th align="center" valign="top"> ' +
                              stat_dict[stat][0] +
@@ -125,9 +123,11 @@ def build_html_table(out, state, stat_list, img_range):
         arr = [state[algorithm][file]["angular_error"] for file in state[algorithm].keys() if file>=img_range[0] and file<=img_range[1]]
         average_time = "%.2f ms" % np.mean([state[algorithm][file]["time"] for file in state[algorithm].keys()
                                                                            if file>=img_range[0] and file<=img_range[1]])
-        html_out += ['    <tr>\n',
-                     '      <td>' + algorithm + '</td>\n',
-                     '      <td>' + average_time + '</td>\n']
+        html_out += [
+            '    <tr>\n',
+            f'      <td>{algorithm}' + '</td>\n',
+            f'      <td>{average_time}' + '</td>\n',
+        ]
         for stat in stat_list:
             html_out += ['      <td> ' +
                                  "%.2f&deg" % stat_dict[stat][1](arr) +
@@ -135,9 +135,8 @@ def build_html_table(out, state, stat_list, img_range):
         html_out += ['    </tr>\n']
     html_out += ['  </tbody>\n',
                  '</table>\n']
-    f = open(out, 'w')
-    f.writelines(html_out)
-    f.close()
+    with open(out, 'w') as f:
+        f.writelines(html_out)
 
 
 if __name__ == '__main__':
@@ -217,19 +216,18 @@ if __name__ == '__main__':
     args, other_args = parser.parse_known_args()
 
     if not os.path.exists(args.input_folder):
-        print("Error: " + args.input_folder + (" does not exist. Please, correctly "
-                                                 "specify the -i parameter"))
+        print(
+            f"Error: {args.input_folder} does not exist. Please, correctly specify the -i parameter"
+        )
         sys.exit(1)
 
     if not os.path.exists(args.ground_truth):
-        print("Error: " + args.ground_truth + (" does not exist. Please, correctly "
-                                                 "specify the -g parameter"))
+        print(
+            f"Error: {args.ground_truth} does not exist. Please, correctly specify the -g parameter"
+        )
         sys.exit(1)
 
-    state = {}
-    if os.path.isfile(args.state):
-        state = load_json(args.state)
-
+    state = load_json(args.state) if os.path.isfile(args.state) else {}
     algorithm_list = parse_sequence(args.algorithms)
     img_range = list(map(int, parse_sequence(args.range)))
     if len(img_range)!=2:
@@ -240,11 +238,10 @@ if __name__ == '__main__':
     (gt_illuminants,black_levels) = load_ground_truth(args.ground_truth)
 
     for algorithm in algorithm_list:
-        i = 0
         if algorithm not in state.keys():
             state[algorithm] = {}
         sz = len(img_files)
-        for file in img_files:
+        for i, file in enumerate(img_files):
             if file not in state[algorithm].keys() and\
              ((i>=img_range[0] and i<img_range[1]) or img_range[0]==img_range[1]==0):
                 cur_path = os.path.join(args.input_folder, file)
@@ -263,6 +260,5 @@ if __name__ == '__main__':
                 sys.stdout.write("Algorithm: %-20s Done: [%3d/%3d]\r" % (algorithm, i, sz)),
                 sys.stdout.flush()
                 save_json(state, args.state)
-            i+=1
     save_json(state, args.state)
     build_html_table(args.out, state, parse_sequence(args.stats), [img_files[img_range[0]], img_files[img_range[1]-1]])

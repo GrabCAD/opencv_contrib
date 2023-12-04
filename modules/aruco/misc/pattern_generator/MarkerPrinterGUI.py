@@ -19,10 +19,7 @@ class MarkerPrinterGUI:
     def VisDPI(self, shape):
         scale0 = float(self.displayShape[0]) / float(shape[0])
         scale1 = float(self.displayShape[1]) / float(shape[1])
-        if(scale0 > scale1):
-            return scale1 * 96.0
-        else:
-            return scale0 * 96.0
+        return scale1 * 96.0 if (scale0 > scale1) else scale0 * 96.0
 
     def OnShowingHelpGithub(self):
         messagebox.showinfo("Github",
@@ -37,33 +34,31 @@ class MarkerPrinterGUI:
     def OnSelectCharucoMarkerDictionary(self, pDictName):
         self.charucoMarkerDictionaryStr.set(pDictName)
 
-    def __SaveMarker(GenMarkerImageCallback, *args, **kwargs):
+    def __SaveMarker(self, *args, **kwargs):
 
-        if(kwargs.get("subSize",None) is not None):
+        if (kwargs.get("subSize",None) is not None):
             subSizeX, subSizeY = kwargs["subSize"]
 
             kwargs["subSize"] = None
 
-            if(subSizeX > 0):
-                if(subSizeY > 0):
-                    kwargs["subSize"] = (subSizeX, subSizeY)
-                else:
-                    kwargs["subSize"] = (subSizeX, sizeY)
+            if (subSizeX > 0):
+                kwargs["subSize"] = (
+                    (subSizeX, subSizeY) if (subSizeY > 0) else (subSizeX, sizeY)
+                )
             else:
-                if(subSizeY > 0):
-                    kwargs["subSize"] = (sizeX, subSizeY)
-                else:
-                    kwargs["subSize"] = None
-
+                kwargs["subSize"] = (sizeX, subSizeY) if (subSizeY > 0) else None
         try:
-            askFileName = filedialog.asksaveasfilename(initialdir = os.path.abspath("./"), title = "Output", filetypes = (\
-                ("scalable vector graphics files","*.svg"), \
-                ("portable document format files","*.pdf"), \
-                ("post script files","*.ps")),
-                defaultextension="*.*")
-
-            if (askFileName):
-                GenMarkerImageCallback(askFileName, *args, **kwargs)
+            if askFileName := filedialog.asksaveasfilename(
+                initialdir=os.path.abspath("./"),
+                title="Output",
+                filetypes=(
+                    ("scalable vector graphics files", "*.svg"),
+                    ("portable document format files", "*.pdf"),
+                    ("post script files", "*.ps"),
+                ),
+                defaultextension="*.*",
+            ):
+                self(askFileName, *args, **kwargs)
 
         except Exception as e:
             warnings.warn(str(e))
@@ -506,7 +501,7 @@ class MarkerPrinterGUI:
         time.sleep(0)
         self.window.after(self.delay, self.Update)
 
-    def __init__(self, pDelay=15, pDisplayShape=(int(400), int(1200))):
+    def __init__(self, pDelay=15, pDisplayShape=(400, 1200)):
         self.delay = pDelay
         self.displayShape = pDisplayShape
 

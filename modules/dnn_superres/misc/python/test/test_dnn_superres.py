@@ -11,8 +11,8 @@ class test_dnn_superres(NewOpenCVTests):
     def test_single_output(self):
         # Get test data paths
         dnn_superres_test_path = os.environ['OPENCV_TEST_DATA_PATH'] + "/cv/dnn_superres/"
-        img_path = dnn_superres_test_path + "butterfly.png"
-        espcn_path = dnn_superres_test_path + "ESPCN_x2.pb"
+        img_path = f"{dnn_superres_test_path}butterfly.png"
+        espcn_path = f"{dnn_superres_test_path}ESPCN_x2.pb"
 
         # Create an SR object
         sr = cv.dnn_superres.DnnSuperResImpl_create()

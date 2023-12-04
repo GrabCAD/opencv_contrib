@@ -54,7 +54,7 @@ def handle_def_arg(inp, tp = '', ns=''):
     if inp in jl_cpp_defmap[tp]:
         out = jl_cpp_defmap[tp][inp]
     elif inp != '':
-        print(inp+" not found")
+        print(f"{inp} not found")
     # print(inp, tp, out)
     return out
 
@@ -72,20 +72,17 @@ class ClassInfo(ClassInfo):
 
     def get_jl_code(self):
 
-        if self.ismap:
-            return ''
-        return self.overload_get()+self.overload_set()
+        return '' if self.ismap else self.overload_get()+self.overload_set()
 
     def overload_get(self):
         stra = "function Base.getproperty(m::%s, s::Symbol)\n" %(self.mapped_name)
         if self.isalgorithm:
             stra = "function Base.getproperty(m::cv_Ptr{%s}, s::Symbol)\n" %(self.mapped_name)
         for prop in self.props:
-            stra = stra + "    if s==:" + prop.name+"\n"
+            stra = f"{stra}    if s==:{prop.name}" + "\n"
             stra = stra + "        return cpp_to_julia(%s(m))\n"%self.get_prop_func_cpp("get", prop.name)
             stra = stra + "    end\n"
-        stra = stra + "    return Base.getfield(m, s)\nend\n"
-        return stra
+        return stra + "    return Base.getfield(m, s)\nend\n"
 
     def overload_set(self):
 
@@ -96,11 +93,10 @@ class ClassInfo(ClassInfo):
         for prop in self.props:
             if not prop.readonly:
                 continue
-            stra = stra + "    if s==:" + prop.name+"\n"
+            stra = f"{stra}    if s==:{prop.name}" + "\n"
             stra = stra + "        %s(m, julia_to_cpp(v))\n"%(self.get_prop_func_cpp("set", prop.name))
             stra = stra + "    end\n"
-        stra = stra + "    return Base.setfield!(m, s, v)\nend\n"
-        return stra
+        return stra + "    return Base.setfield!(m, s, v)\nend\n"
 
 class FuncVariant(FuncVariant):
 
@@ -108,33 +104,49 @@ class FuncVariant(FuncVariant):
     def get_argument_full(self, classname='', isalgo = False):
         arglist = self.inlist + self.optlist
 
-        argnamelist = [arg.name+"::"+(handle_jl_arg(arg.tp) if handle_jl_arg(arg.tp) not in pass_by_val_types else handle_jl_arg(arg.tp)[:-1]) for arg in arglist]
-        argstr = ", ".join(argnamelist)
-        return argstr
+        argnamelist = [
+            f"{arg.name}::"
+            + (
+                handle_jl_arg(arg.tp)
+                if handle_jl_arg(arg.tp) not in pass_by_val_types
+                else handle_jl_arg(arg.tp)[:-1]
+            )
+            for arg in arglist
+        ]
+        return ", ".join(argnamelist)
 
     def get_argument_opt(self, ns=''):
         # [print(arg.default_value,":",handle_def_arg(arg.default_value, handle_jl_arg(arg.tp))) for arg in self.optlist]
         try:
-            str2 =  ", ".join(["%s::%s = %s(%s)" % (arg.name, handle_jl_arg(arg.tp), handle_jl_arg(arg.tp) if (arg.tp == 'int' or arg.tp=='float' or arg.tp=='double') else '', handle_def_arg(arg.default_value, handle_jl_arg(arg.tp), ns)) for arg in self.optlist])
-            return str2
+            return ", ".join(
+                [
+                    f"{arg.name}::{handle_jl_arg(arg.tp)} = {handle_jl_arg(arg.tp) if arg.tp in ['int', 'float', 'double'] else ''}({handle_def_arg(arg.default_value, handle_jl_arg(arg.tp), ns)})"
+                    for arg in self.optlist
+                ]
+            )
         except KeyError:
             return ''
 
     def get_argument_def(self, classname, isalgo):
         arglist = self.inlist
-        argnamelist = [arg.name+"::"+(handle_jl_arg(arg.tp) if handle_jl_arg(arg.tp) not in pass_by_val_types else handle_jl_arg(arg.tp)[:-1]) for arg in arglist]
-        argstr = ", ".join(argnamelist)
-        return argstr
+        argnamelist = [
+            f"{arg.name}::"
+            + (
+                handle_jl_arg(arg.tp)
+                if handle_jl_arg(arg.tp) not in pass_by_val_types
+                else handle_jl_arg(arg.tp)[:-1]
+            )
+            for arg in arglist
+        ]
+        return ", ".join(argnamelist)
 
     def get_return(self, classname=''):
         argstr = ''
         arglist = self.inlist + self.optlist
-        return "return cpp_to_julia(%s(%s))" %(self.get_wrapper_name(), ",".join(["julia_to_cpp(%s)" % (x.name) for x in arglist]))
+        return f'return cpp_to_julia({self.get_wrapper_name()}({",".join([f"julia_to_cpp({x.name})" for x in arglist])}))'
 
     def get_algo_tp(self, classname, isalgo):
-        if not isalgo or not classname:
-            return ''
-        return ' where {T <: %s}' % classname
+        return '' if not isalgo or not classname else ' where {T <: %s}' % classname
 
     def get_complete_code(self, classname='', isalgo = False, iscons = False, gen_default = True, ns = ''):
         if classname and not iscons:
@@ -144,7 +156,7 @@ class FuncVariant(FuncVariant):
                 self.inlist = [ArgInfo("cobj", classname)] + self.inlist
         map_name = self.mapped_name
         if ns!='cv':
-            map_name = '%s_%s' %(ns.split('::')[-1], map_name)
+            map_name = f"{ns.split('::')[-1]}_{map_name}"
         outstr = 'function %s(%s)%s\n\t%s\nend\n' % (map_name, self.get_argument_full(classname, isalgo), self.get_algo_tp(classname, isalgo),self.get_return())
 
 
@@ -190,8 +202,7 @@ def gen(srcfiles):
                         print("Skipping default declaration: ", f.name)
                         gend = False
                     jl_code.write('\n%s'  % f.get_complete_code(classname = cl.mapped_name, isalgo = cl.isalgorithm, gen_default = gend, ns=nsname))
-                    function_signatures.append(sign)
-                    function_signatures.append(sign2)
+                    function_signatures.extend((sign, sign2))
             for f in cl.constructors:
                 f.__class__ = FuncVariant
                 jl_code.write('\n%s'  % f.get_complete_code(classname = cl.mapped_name, isalgo = cl.isalgorithm, iscons = True, ns=nsname))
@@ -209,10 +220,7 @@ def gen(srcfiles):
                     gend = False
 
                 jl_code.write('\n%s' % f.get_complete_code(gen_default = gend, ns=nsname))
-                function_signatures.append(sign)
-                function_signatures.append(sign2)
-
-
+                function_signatures.extend((sign, sign2))
         imports = ''
         for namex in namespaces:
             if namex.startswith(name) and len(namex.split('::')) == 1 + len(name.split('::')):
@@ -223,7 +231,7 @@ def gen(srcfiles):
         else:
             code = submodule_template.substitute(code = jl_code.getvalue(), submodule_imports = imports)
 
-        with open ('autogen_jl/%s_cxx_wrap.jl' % ns.name.replace('::', '_'), 'w') as fd:
+        with open(f"autogen_jl/{ns.name.replace('::', '_')}_cxx_wrap.jl", 'w') as fd:
             fd.write(code)
 
 

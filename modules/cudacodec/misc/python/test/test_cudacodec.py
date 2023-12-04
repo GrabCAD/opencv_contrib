@@ -29,7 +29,11 @@ class cudacodec_test(NewOpenCVTests):
             #TODO: self.assertTrue(gpu_mat == gpu_mat2)
             self.assertTrue(ret)
         except cv.error as e:
-            notSupported = (e.code == cv.Error.StsNotImplemented or e.code == cv.Error.StsUnsupportedFormat or e.code == cv.Error.GPU_API_CALL_ERROR)
+            notSupported = e.code in [
+                cv.Error.StsNotImplemented,
+                cv.Error.StsUnsupportedFormat,
+                cv.Error.GPU_API_CALL_ERROR,
+            ]
             self.assertTrue(notSupported)
             if e.code == cv.Error.StsNotImplemented:
                 self.skipTest("NVCUVID is not installed")

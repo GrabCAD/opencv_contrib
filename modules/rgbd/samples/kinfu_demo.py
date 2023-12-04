@@ -5,9 +5,8 @@ import sys
 from argparse import ArgumentParser
 
 def get_depth_list(folder):
-    f = open(folder + '/depth.txt', 'r')
-    rgb = [folder + '/' + s for s in f.read().split() if s.endswith('.png')]
-    return rgb
+    f = open(f'{folder}/depth.txt', 'r')
+    return [f'{folder}/{s}' for s in f.read().split() if s.endswith('.png')]
 
 def kinfu_demo():
     parser = ArgumentParser()
@@ -23,7 +22,7 @@ def kinfu_demo():
 
     cv.ocl.setUseOpenCL(args.use_opencl)
 
-    if (args.large_kinfu == None or args.large_kinfu == "0"):
+    if args.large_kinfu is None or args.large_kinfu == "0":
         params = cv.kinfu_Params.defaultParams()
         kf = cv.kinfu_KinFu.create(params)
     elif (args.large_kinfu == "1"):

@@ -65,9 +65,11 @@ def split_decl_name(name):
 
 def handle_cpp_arg(inp):
     def handle_vector(match):
-        return handle_cpp_arg("%svector<%s>" % (match.group(1), match.group(2)))
+        return handle_cpp_arg(f"{match.group(1)}vector<{match.group(2)}>")
+
     def handle_ptr(match):
-        return handle_cpp_arg("%sPtr<%s>" % (match.group(1), match.group(2)))
+        return handle_cpp_arg(f"{match.group(1)}Ptr<{match.group(2)}>")
+
     inp = re.sub("(.*)vector_(.*)", handle_vector, inp)
     inp = re.sub("(.*)Ptr_(.*)", handle_ptr, inp)
 
@@ -77,9 +79,11 @@ def handle_cpp_arg(inp):
 def get_template_arg(inp):
     inp = inp.replace(' ','').replace('*', '').replace('cv::', '').replace('std::', '')
     def handle_vector(match):
-        return get_template_arg("%s" % (match.group(1)))
+        return get_template_arg(f"{match.group(1)}")
+
     def handle_ptr(match):
-        return get_template_arg("%s" % (match.group(1)))
+        return get_template_arg(f"{match.group(1)}")
+
     inp = re.sub("vector<(.*)>", handle_vector, inp)
     inp = re.sub("Ptr<(.*)>", handle_ptr, inp)
     ns, cl, n = split_decl_name(inp)
@@ -88,14 +92,7 @@ def get_template_arg(inp):
     return inp.replace("String", "string")
 
 def registered_tp_search(tp):
-    found = False
-    if not tp:
-        return True
-    for tpx in registered_types:
-        if re.findall(tpx, tp):
-            found = True
-            break
-    return found
+    return True if not tp else any(re.findall(tpx, tp) for tpx in registered_types)
 
 namespaces = {}
 type_paths = {}
@@ -130,42 +127,42 @@ class ClassInfo(object):
         classes[name] = self
 
     def add_decl(self, decl):
-        if decl:
-            # print(decl)
-            bases = decl[1].split(',')
-            if len(bases[0].split()) > 1:
-                bases[0] = bases[0].split()[1]
+        if not decl:
+            return
+        # print(decl)
+        bases = decl[1].split(',')
+        if len(bases[0].split()) > 1:
+            bases[0] = bases[0].split()[1]
 
-                bases = [x.replace(' ','') for x in bases]
+            bases = [x.replace(' ','') for x in bases]
                 # print(bases)
-                if len(bases) > 1:
-                    # Clear the set a bit
-                    bases = list(set(bases))
-                    bases.remove('cv::class')
-                    bases_clear = []
-                    for bb in bases:
-                        if self.name not in bb:
-                            bases_clear.append(bb)
-                    bases = bases_clear
-                if len(bases) > 1:
-                    print("Note: Class %s has more than 1 base class (not supported by CxxWrap)" % (self.name,))
-                    print("      Bases: ", " ".join(bases))
-                    print("      Only the first base class will be used")
-                if len(bases) >= 1:
-                    self.base = bases[0].replace('.', '::')
-                    if "cv::Algorithm" in bases:
-                        self.isalgorithm = True
+            if len(bases) > 1:
+                # Clear the set a bit
+                bases = list(set(bases))
+                bases.remove('cv::class')
+                bases_clear = [bb for bb in bases if self.name not in bb]
+                bases = bases_clear
+            if len(bases) > 1:
+                print(
+                    f"Note: Class {self.name} has more than 1 base class (not supported by CxxWrap)"
+                )
+                print("      Bases: ", " ".join(bases))
+                print("      Only the first base class will be used")
+            if bases:
+                self.base = bases[0].replace('.', '::')
+                if "cv::Algorithm" in bases:
+                    self.isalgorithm = True
 
-            for m in decl[2]:
-                if m.startswith("="):
-                    self.mapped_name = m[1:]
-                # if m == "/Map":
-                #     self.ismap = True
-            self.props = [ClassProp(p) for p in decl[3]]
+        for m in decl[2]:
+            if m.startswith("="):
+                self.mapped_name = m[1:]
+            # if m == "/Map":
+            #     self.ismap = True
+        self.props = [ClassProp(p) for p in decl[3]]
         # return code for functions and setters and getters if simple class or functions and map type
 
     def get_prop_func_cpp(self, mode, propname):
-        return "jlopencv_" + self.mapped_name + "_"+mode+"_"+propname
+        return f"jlopencv_{self.mapped_name}_{mode}_{propname}"
 
 argumentst = []
 default_values = []
@@ -187,15 +184,15 @@ class ArgInfo(object):
         self.ref = False
 
         for m in arg_tuple[3]:
-            if m == "/O":
-                self.inputarg = False
-                self.outputarg = True
+            if m == '/Ref':
+                self.ref = True
+
             elif m == "/IO":
                 self.inputarg = True
                 self.outputarg = True
-            elif m == '/Ref':
-                self.ref = True
-
+            elif m == "/O":
+                self.inputarg = False
+                self.outputarg = True
         if self.tp in pass_by_val_types:
             self.outputarg = True
 
@@ -234,7 +231,9 @@ class FuncVariant(object):
             a = ArgInfo(ainfo)
             if a.default_value and ('(' in a.default_value or ':' in a.default_value):
                 default_values.append(a.default_value)
-            assert not a.tp in forbidden_arg_types, 'Forbidden type "{}" for argument "{}" in "{}" ("{}")'.format(a.tp, a.name, self.name, self.classname)
+            assert (
+                a.tp not in forbidden_arg_types
+            ), f'Forbidden type "{a.tp}" for argument "{a.name}" in "{self.name}" ("{self.classname}")'
             if a.tp in ignored_arg_types:
                 continue
 
@@ -257,10 +256,7 @@ class FuncVariant(object):
         Return wrapping function name
         """
         name = self.name.replace('::', '_')
-        if self.classname:
-            classname = self.classname.replace('::', '_') + "_"
-        else:
-            classname = ""
+        classname = self.classname.replace('::', '_') + "_" if self.classname else ""
         return "jlopencv_" + self.namespace.replace('::','_') + '_' + classname + name
 
 
@@ -278,22 +274,22 @@ class FuncVariant(object):
 # This logic can almost definitely be simplified
 
         for a in self.args:
-            if a.isbig and not (a.inputarg and not a.default_value):
+            if a.isbig and (not a.inputarg or a.default_value):
                 optlist.append(a)
             if a.outputarg:
                 outlist.append(a)
             if a.inputarg and not a.default_value:
                 inlist.append(a)
-            elif a.inputarg and a.default_value and not a.isbig:
+            elif a.inputarg and not a.isbig:
                 optlist.append(a)
-            elif not (a.isbig and not (a.inputarg and not a.default_value)):
+            elif not (a.isbig and (not a.inputarg or a.default_value)):
                 deflist.append(a)
 
         if self.rettype:
             outlist = [ArgInfo("retval", self.rettype)] + outlist
 
         if self.isconstructor:
-            assert outlist == [] or outlist[0].tp ==  "explicit"
+            assert not outlist or outlist[0].tp ==  "explicit"
             outlist = [ArgInfo("retval", self.classname)]
 
 
@@ -358,23 +354,22 @@ def add_func(decl):
         if not mapped_name:
             mapped_name = "_".join(classes + [barename])
         func_map[name].append(FuncVariant("", name, mapped_name, decl, namespace, True))
-    else:
-        if classname:
-            func = FuncVariant(full_classname, name, barename, decl, namespace, False)
-            if func.isconstructor:
-                namespaces[namespace].classes[full_classname].constructors.append(func)
-            else:
-                func_map = namespaces[namespace].classes[full_classname].methods
-                if name not in func_map:
-                    func_map[name] = []
-                func_map[name].append(func)
+    elif classname:
+        func = FuncVariant(full_classname, name, barename, decl, namespace, False)
+        if func.isconstructor:
+            namespaces[namespace].classes[full_classname].constructors.append(func)
         else:
-            func_map = namespaces[namespace].funcs
+            func_map = namespaces[namespace].classes[full_classname].methods
             if name not in func_map:
                 func_map[name] = []
-            if not mapped_name:
-                mapped_name = barename
-            func_map[name].append(FuncVariant("", name, mapped_name, decl, namespace, False))
+            func_map[name].append(func)
+    else:
+        func_map = namespaces[namespace].funcs
+        if name not in func_map:
+            func_map[name] = []
+        if not mapped_name:
+            mapped_name = barename
+        func_map[name].append(FuncVariant("", name, mapped_name, decl, namespace, False))
 
 
 def add_class(stype, name, decl):
@@ -401,8 +396,7 @@ def add_const(name, decl, tp = ''):
     mapped_name = '_'.join(classes+[barename])
     ns = namespaces[namespace]
     if mapped_name in ns.consts:
-        print("Generator error: constant %s (name=%s) already exists" \
-            % (name, name))
+        print(f"Generator error: constant {name} (name={name}) already exists")
         sys.exit(-1)
     ns.consts[name] = mapped_name
 
@@ -479,13 +473,13 @@ def gen_tree(srcfiles):
             base = classinfo.base
             # print(base)
             if base not in classes:
-                print("Generator error: unable to resolve base %s for %s"
-                    % (classinfo.base, classinfo.name))
+                print(
+                    f"Generator error: unable to resolve base {classinfo.base} for {classinfo.name}"
+                )
                 sys.exit(-1)
             base_instance = classes[base]
             classinfo.base = base
             classinfo.isalgorithm |= base_instance.isalgorithm  # wrong processing of 'isalgorithm' flag:
-                                                                # doesn't work for trees(graphs) with depth > 2
             classes[name] = classinfo
 
     # tree-based propagation of 'isalgorithm'
@@ -501,6 +495,7 @@ def gen_tree(srcfiles):
             res = classinfo.isalgorithm
         processed[classinfo] = True
         return res
+
     for name, classinfo in classes.items():
         process_isalgorithm(classinfo)
 
@@ -522,10 +517,13 @@ def gen_tree(srcfiles):
             ns.registered.append(e2[1])
 
         ns.register_types = list(set(ns.register_types))
-        ns.register_types = [tp for tp in ns.register_types if not registered_tp_search(tp) and not tp in ns.registered]
+        ns.register_types = [
+            tp
+            for tp in ns.register_types
+            if not registered_tp_search(tp) and tp not in ns.registered
+        ]
         for tp in ns.register_types:
             registered_types.append(get_template_arg(tp))
             ns.registered.append(get_template_arg(tp))
     default_valuesr = list(set(default_values))
-        # registered_types = registered_types + ns.register_types
     return namespaces, default_valuesr

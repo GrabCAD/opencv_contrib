@@ -34,11 +34,11 @@ if __name__ == '__main__':
 
     cam = cv.VideoCapture(video_src)
     if not cam.isOpened():
-        print("could not open video_src " + str(video_src) + " !\n")
+        print(f"could not open video_src {video_src}" + " !\n")
         sys.exit(1)
     ret, frame = cam.read()
     if ret == False:
-        print("could not read from " + str(video_src) + " !\n")
+        print(f"could not read from {video_src}" + " !\n")
         sys.exit(1)
     h, w = frame.shape[:2]
     prev_frame = frame.copy()

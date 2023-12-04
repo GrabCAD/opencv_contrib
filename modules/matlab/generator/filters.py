@@ -28,9 +28,7 @@ def outputs(args):
 def only(args):
     '''Returns exclusively the arguments which are only inputs
     or only outputs'''
-    d = {};
-    d['only'] = args
-    return d
+    return {'only': args}
 
 def void(arg):
     '''Is the input 'void' '''
@@ -72,12 +70,12 @@ def formatMatlabConstant(string, table):
     # split the string into expressions
     words = re.split('(\W+)', string)
     # add a 'cv' prefix if an expression is also a key in the lookup table
-    words = ''.join([('cv.'+word if word in table else word) for word in words])
+    words = ''.join([f'cv.{word}' if word in table else word for word in words])
     # attempt to convert arithmetic expressions and binary/hex to decimal
     words = binaryToDecimal(words)
     # convert any remaining bitshifts to Matlab 'bitshift' methods
     shift = re.sub('[\(\) ]', '', words).split('<<')
-    words = 'bitshift('+shift[0]+', '+shift[1]+')' if len(shift) == 2 else words
+    words = f'bitshift({shift[0]}, {shift[1]})' if len(shift) == 2 else words
     return words
 
 def matlabURL(string):
@@ -124,7 +122,7 @@ def stripTags(text):
 
 def qualify(text, name):
     '''Adds uppercase 'CV.' qualification to any occurrences of name in text'''
-    return re.sub(name.upper(), 'CV.'+name.upper(), text)
+    return re.sub(name.upper(), f'CV.{name.upper()}', text)
 
 def slugify(text):
     '''A_Function_name --> a-function-name'''
@@ -142,7 +140,7 @@ def split(text, delimiter=' '):
 
 def csv(items, sep=', '):
     '''format a list with a separator (comma if not specified)'''
-    return sep.join(item for item in items)
+    return sep.join(iter(items))
 
 def cellarray(items, escape='\''):
     '''format a list of items as a matlab cell array'''

@@ -14,7 +14,7 @@ def substitute(build, output_dir):
     template = jtemplate.get_template('template_build_info.m')
 
     # create the build directory
-    output_dir  = output_dir+'/+cv'
+    output_dir = f'{output_dir}/+cv'
     if not os.path.isdir(output_dir):
       os.mkdir(output_dir)
 

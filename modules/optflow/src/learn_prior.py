@@ -59,7 +59,7 @@ def find_flo(pp):
 def load_flo(flo):
     with open(flo, 'rb') as f:
         magic = np.fromfile(f, np.float32, count=1)[0]
-        if 202021.25 != magic:
+        if magic != 202021.25:
             print('Magic number incorrect. Invalid .flo file')
         else:
             w = np.fromfile(f, np.int32, count=1)[0]
@@ -98,10 +98,12 @@ for i in xrange(len(w1)):
 for i in xrange(len(w2)):
     w2[i] -= w2mean
 
-Q1 = sum([w1[i].reshape(-1, 1).dot(w1[i].reshape(1, -1))
-          for i in xrange(len(w1))]) / len(w1)
-Q2 = sum([w2[i].reshape(-1, 1).dot(w2[i].reshape(1, -1))
-          for i in xrange(len(w2))]) / len(w2)
+Q1 = sum(
+    w1[i].reshape(-1, 1).dot(w1[i].reshape(1, -1)) for i in xrange(len(w1))
+) / len(w1)
+Q2 = sum(
+    w2[i].reshape(-1, 1).dot(w2[i].reshape(1, -1)) for i in xrange(len(w2))
+) / len(w2)
 Q1 = np.matrix(Q1)
 Q2 = np.matrix(Q2)
 
@@ -139,28 +141,25 @@ L2 = np.linalg.inv(L2) * gamma
 assert (L1.shape == L2.shape)
 assert (L1.shape[0] == L1.shape[1])
 
-f = open(args.output, 'wb')
+with open(args.output, 'wb') as f:
+    f.write(struct.pack('I', L1.shape[0]))
+    f.write(struct.pack('I', L1.shape[1]))
 
-f.write(struct.pack('I', L1.shape[0]))
-f.write(struct.pack('I', L1.shape[1]))
+    for i in xrange(L1.shape[0]):
+        for j in xrange(L1.shape[1]):
+            f.write(struct.pack('f', L1[i, j]))
 
-for i in xrange(L1.shape[0]):
-    for j in xrange(L1.shape[1]):
-        f.write(struct.pack('f', L1[i, j]))
+    for i in xrange(L2.shape[0]):
+        for j in xrange(L2.shape[1]):
+            f.write(struct.pack('f', L2[i, j]))
 
-for i in xrange(L2.shape[0]):
-    for j in xrange(L2.shape[1]):
-        f.write(struct.pack('f', L2[i, j]))
+    b1 = L1.dot(w1mean.reshape(-1, 1))
+    b2 = L2.dot(w2mean.reshape(-1, 1))
 
-b1 = L1.dot(w1mean.reshape(-1, 1))
-b2 = L2.dot(w2mean.reshape(-1, 1))
+    assert (L1.shape[0] == b1.shape[0])
 
-assert (L1.shape[0] == b1.shape[0])
+    for i in xrange(b1.shape[0]):
+        f.write(struct.pack('f', b1[i, 0]))
 
-for i in xrange(b1.shape[0]):
-    f.write(struct.pack('f', b1[i, 0]))
-
-for i in xrange(b2.shape[0]):
-    f.write(struct.pack('f', b2[i, 0]))
-
-f.close()
+    for i in xrange(b2.shape[0]):
+        f.write(struct.pack('f', b2[i, 0]))

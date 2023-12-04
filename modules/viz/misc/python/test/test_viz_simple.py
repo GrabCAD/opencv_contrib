@@ -108,7 +108,7 @@ class viz_test(NewOpenCVTests):
         viz.showWidget("text2d", cv.viz_WText("Overlay images", (20, 20), 20, cv.viz_Color().green()))
 
         i = 0
-        for num in range(50):
+        for _ in range(50):
             i = i + 1
             a = i % 360
             pose = (3 * np.sin(a * np.pi/180), 2.1, 3 * np.cos(a * np.pi/180));
@@ -138,7 +138,7 @@ class viz_test(NewOpenCVTests):
         viz.showWidget("text2d", cv.viz_WText("Images in 3D", (20, 20), 20, cv.viz_Color().green()))
 
         i = 0
-        for num in range(50):
+        for _ in range(50):
             img = lena * (np.sin(i*7.5*np.pi/180) * 0.5 + 0.5)
             x.setImage(img.astype(np.uint8))
             i = i + 1
@@ -383,7 +383,7 @@ class viz_test(NewOpenCVTests):
         viz.showWidget("text2d", cv.viz_WText("Different kinds of supported trajectories", (20, 20), 20, cv.viz_Color().green()))
 
         i = 0
-        for num in range(50):
+        for _ in range(50):
             i = i - 1
             a = i % 360
             pose = (np.sin(a * np.pi/180)* 7.5, 0.7, np.cos(a * np.pi/180)* 7.5)

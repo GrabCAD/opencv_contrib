@@ -24,10 +24,10 @@ class intensity_transform_test(NewOpenCVTests):
         filenames = ['P1000205_resize', 'P1010676_resize', 'P1010815_resize']
 
         for f in filenames:
-            img = self.get_sample('cv/intensity_transform/BIMEF/{}.png'.format(f))
+            img = self.get_sample(f'cv/intensity_transform/BIMEF/{f}.png')
             self.assertTrue(img.size > 0)
 
-            img_ref = self.get_sample('cv/intensity_transform/BIMEF/{}_ref.png'.format(f))
+            img_ref = self.get_sample(f'cv/intensity_transform/BIMEF/{f}_ref.png')
             self.assertTrue(img_ref.size > 0)
 
             img_BIMEF = cv.intensity_transform.BIMEF(img)

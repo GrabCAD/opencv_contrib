@@ -10,17 +10,15 @@ import matplotlib.pyplot as plt
 
 def load_json(path):
     f = open(path, "r")
-    data = json.load(f)
-    return data
+    return json.load(f)
 
 
 def save_json(obj, path):
-    tmp_file = path + ".bak"
-    f = open(tmp_file, "w")
-    json.dump(obj, f, indent=2)
-    f.flush()
-    os.fsync(f.fileno())
-    f.close()
+    tmp_file = f"{path}.bak"
+    with open(tmp_file, "w") as f:
+        json.dump(obj, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
     try:
         os.rename(tmp_file, path)
     except:
@@ -29,9 +27,7 @@ def save_json(obj, path):
 
 
 def parse_evaluation_result(input_str, i):
-    res = {}
-    res['frame_number'] = i + 1
-    res['error'] = {}
+    res = {'frame_number': i + 1, 'error': {}}
     regex = "([A-Za-z. \\[\\].0-9]+):[ ]*([0-9]*\.[0-9]+|[0-9]+)"
     for elem in re.findall(regex,input_str):
         if "Time" in elem[0]:
@@ -129,7 +125,7 @@ def build_chart(dst_folder, state, dataset):
     color_idx = 0
     for algo in state[dataset].keys():
         for eval_instance in state[dataset][algo]:
-            name = algo + "--" + eval_instance["timestamp"]
+            name = f"{algo}--" + eval_instance["timestamp"]
             average_time = 0.0
             average_error = 0.0
             num_elem = 0
@@ -156,11 +152,13 @@ def build_chart(dst_folder, state, dataset):
     plt.gca().set_ylabel('Average Endpoint Error (EPE)', fontsize=20)
     plt.gca().set_xlabel('Average Runtime (seconds per frame)', fontsize=20)
     plt.gca().set_xscale("log")
-    plt.gca().set_title('Evaluation on ' + dataset, fontsize=20)
+    plt.gca().set_title(f'Evaluation on {dataset}', fontsize=20)
 
     plt.gca().legend()
-    fig.savefig(os.path.join(dst_folder, "evaluation_results_" + dataset + ".png"),
-                bbox_inches='tight')
+    fig.savefig(
+        os.path.join(dst_folder, f"evaluation_results_{dataset}.png"),
+        bbox_inches='tight',
+    )
     plt.close()
 
 
@@ -217,28 +215,26 @@ if __name__ == '__main__':
     args, other_args = parser.parse_known_args()
 
     if not os.path.isfile(args.bin_path):
-        print("Error: " + args.bin_path + " does not exist")
+        print(f"Error: {args.bin_path} does not exist")
         sys.exit(1)
 
     if not os.path.exists(args.dataset_folder):
-        print("Error: " + args.dataset_folder + (" does not exist. Please, correctly "
-                                                 "specify the -f parameter"))
+        print(
+            f"Error: {args.dataset_folder} does not exist. Please, correctly specify the -f parameter"
+        )
         sys.exit(1)
 
-    state = {}
-    if os.path.isfile(args.state):
-        state = load_json(args.state)
-
+    state = load_json(args.state) if os.path.isfile(args.state) else {}
     algorithm_list = parse_sequence(args.algorithms)
     dataset_list = parse_sequence(args.datasets)
     for dataset in dataset_list:
         if dataset not in dataset_eval_functions.keys():
-            print("Error: unsupported dataset " + dataset)
+            print(f"Error: unsupported dataset {dataset}")
             sys.exit(1)
         if dataset not in os.listdir(args.dataset_folder):
-            print("Error: " + os.path.join(args.dataset_folder, dataset) + (" does not exist. "
-                              "Please, download the dataset and follow the naming conventions "
-                              "(use -h for more information)"))
+            print(
+                f"Error: {os.path.join(args.dataset_folder, dataset)} does not exist. Please, download the dataset and follow the naming conventions (use -h for more information)"
+            )
             sys.exit(1)
 
     for dataset in dataset_list:
@@ -248,8 +244,10 @@ if __name__ == '__main__':
             if algorithm in state[dataset].keys():
                 last_eval_instance = state[dataset][algorithm][-1]
                 if "finished" not in last_eval_instance.keys():
-                    print(("Continuing an unfinished evaluation of " +
-                          algorithm + " started at " + last_eval_instance["timestamp"]))
+                    print(
+                        f"Continuing an unfinished evaluation of {algorithm} started at "
+                        + last_eval_instance["timestamp"]
+                    )
                 else:
                     state[dataset][algorithm].append({"timestamp":
                         datetime.datetime.now().strftime("%Y-%m-%d--%H-%M")})

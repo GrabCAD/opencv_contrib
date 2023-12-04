@@ -9,7 +9,7 @@ if len(sys.argv) > 1:
         camIdx = int(sys.argv[2]) if len(sys.argv)>2 else 0
     img = cv2.imread(sys.argv[1])
 else:
-    print("    Usage: " + sys.argv[0] + "  <input_image>")
+    print(f"    Usage: {sys.argv[0]}  <input_image>")
     exit(0)
 
 # For python API generator, it follows the template: {module_name}_{class_name},

@@ -28,7 +28,11 @@ class nvidiaopticalflow_test(NewOpenCVTests):
             flowUpSampled = nvof.upSampler(flow[0], cuMat1.shape[1], cuMat1.shape[0], nvof.getGridSize(), None)
             nvof.collectGarbage()
         except cv.error as e:
-            if e.code == cv.Error.StsBadFunc or e.code == cv.Error.StsBadArg or e.code == cv.Error.StsNullPtr:
+            if e.code in [
+                cv.Error.StsBadFunc,
+                cv.Error.StsBadArg,
+                cv.Error.StsNullPtr,
+            ]:
                 self.skipTest("Algorithm is not supported in the current environment")
         self.assertTrue(flowUpSampled.shape[1] > 0 and flowUpSampled.shape[0] > 0)
 

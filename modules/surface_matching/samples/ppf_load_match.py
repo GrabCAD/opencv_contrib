@@ -7,14 +7,14 @@ scenename = "rs1_normals"
 detector = cv.ppf_match_3d_PPF3DDetector(0.025, 0.05)
 
 print('Loading model...')
-pc = cv.ppf_match_3d.loadPLYSimple("data/%s.ply" % modelname, 1)
+pc = cv.ppf_match_3d.loadPLYSimple(f"data/{modelname}.ply", 1)
 
 
 print('Training...')
 detector.trainModel(pc)
 
 print('Loading scene...')
-pcTest = cv.ppf_match_3d.loadPLYSimple("data/%s.ply" % scenename, 1)
+pcTest = cv.ppf_match_3d.loadPLYSimple(f"data/{scenename}.ply", 1)
 
 print('Matching...')
 results = detector.match(pcTest, 1.0/40.0, 0.05)
@@ -29,4 +29,4 @@ for i, result in enumerate(results):
     print("\n-- Pose to Model Index %d: NumVotes = %d, Residual = %f\n%s\n" % (result.modelIndex, result.numVotes, result.residual, result.pose))
     if i == 0:
         pct = cv.ppf_match_3d.transformPCPose(pc, result.pose)
-        cv.ppf_match_3d.writePLY(pct, "%sPCTrans.ply" % modelname)
+        cv.ppf_match_3d.writePLY(pct, f"{modelname}PCTrans.ply")

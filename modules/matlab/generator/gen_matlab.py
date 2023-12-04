@@ -8,7 +8,9 @@ updated_files = []
 
 def update_file(fname, content):
     if fname in updated_files:
-        print('ERROR(gen_matlab.py): attemption to write file multiple times: {}'.format(fname))
+        print(
+            f'ERROR(gen_matlab.py): attemption to write file multiple times: {fname}'
+        )
         return
     updated_files.append(fname)
     if os.path.exists(fname):
@@ -17,9 +19,9 @@ def update_file(fname, content):
         if old_content == content:
             #print('Up-to-date: {}'.format(fname))
             return
-        print('Updating: {}'.format(fname))
+        print(f'Updating: {fname}')
     else:
-        print('Writing: {}'.format(fname))
+        print(f'Writing: {fname}')
     with open(fname, 'wb') as f:
         f.write(content)
 
@@ -54,7 +56,7 @@ class MatlabWrapperGenerator(object):
         # as a separate "namespace"
         parser = hdr_parser.CppHeaderParser()
 
-        ns  = dict((key, []) for key in modules)
+        ns = {key: [] for key in modules}
         path_template = Template('${module}/include/opencv2/${module}.hpp')
 
         for module in modules:
@@ -64,7 +66,7 @@ class MatlabWrapperGenerator(object):
                 if os.path.isfile(header):
                     break
             else:
-                raise Exception('no header found for module %s!' % module)
+                raise Exception(f'no header found for module {module}!')
 
             # parse the definitions
             ns[module] = parser.parse(header)
@@ -109,10 +111,10 @@ class MatlabWrapperGenerator(object):
         tconst     = jtemplate.get_template('template_map_base.m')
 
         # create the build directory
-        output_source_dir  = output_dir+'/src'
-        output_private_dir = output_source_dir+'/private'
-        output_class_dir   = output_dir+'/+cv'
-        output_map_dir     = output_dir+'/map'
+        output_source_dir = f'{output_dir}/src'
+        output_private_dir = f'{output_source_dir}/private'
+        output_class_dir = f'{output_dir}/+cv'
+        output_map_dir = f'{output_dir}/map'
         if not os.path.isdir(output_source_dir):
           os.makedirs(output_source_dir)
         if not os.path.isdir(output_private_dir):
@@ -127,20 +129,26 @@ class MatlabWrapperGenerator(object):
             # functions
             for method in namespace.methods:
                 populated = tfunction.render(fun=method, time=time, includes=namespace.name)
-                update_file(output_source_dir+'/'+method.name+'.cpp', populated.encode('utf-8'))
+                update_file(
+                    f'{output_source_dir}/{method.name}.cpp',
+                    populated.encode('utf-8'),
+                )
             # classes
             for clss in namespace.classes:
                 # cpp converter
                 populated = tclassc.render(clss=clss, time=time)
-                update_file(output_private_dir+'/'+clss.name+'Bridge.cpp', populated.encode('utf-8'))
+                update_file(
+                    f'{output_private_dir}/{clss.name}Bridge.cpp',
+                    populated.encode('utf-8'),
+                )
                 # matlab classdef
                 populated = tclassm.render(clss=clss, time=time)
-                update_file(output_class_dir+'/'+clss.name+'.m', populated.encode('utf-8'))
+                update_file(f'{output_class_dir}/{clss.name}.m', populated.encode('utf-8'))
 
         # create a global constants lookup table
         const = dict(constants(todict(parse_tree.namespaces)))
         populated = tconst.render(constants=const, time=time)
-        update_file(output_dir+'/cv.m', populated.encode('utf-8'))
+        update_file(f'{output_dir}/cv.m', populated.encode('utf-8'))
 
 
 if __name__ == "__main__":

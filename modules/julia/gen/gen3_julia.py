@@ -33,7 +33,7 @@ with open("binding_templates_jl/template_cv2_root.jl", "r") as f:
 class FuncVariant(FuncVariant):
 
     def get_complete_code(self, classname='', isalgo = False, iscons = False, gen_default = True, ns = ''):
-        return 'const %s = OpenCV.%s_%s' %(self.mapped_name, ns, self.mapped_name)
+        return f'const {self.mapped_name} = OpenCV.{ns}_{self.mapped_name}'
 
 
 def gen(srcfiles):
@@ -45,9 +45,9 @@ def gen(srcfiles):
         jl_code = StringIO()
         nsname = '_'.join(name.split('::')[1:])
 
-        # Do not duplicate functions. This should prevent overwriting of Mat function by UMat functions
-        function_signatures = []
         if name != 'cv':
+            # Do not duplicate functions. This should prevent overwriting of Mat function by UMat functions
+            function_signatures = []
             for cname, cl in ns.classes.items():
                 cl.__class__ = ClassInfo
                 for mname, fs in cl.methods.items():
@@ -86,7 +86,7 @@ def gen(srcfiles):
         else:
             code = submodule_template.substitute(modname = name.split('::')[-1], code = jl_code.getvalue(), submodule_imports = imports)
 
-        with open ('autogen_jl/%s_wrap.jl' % ns.name.replace('::', '_'), 'w') as fd:
+        with open(f"autogen_jl/{ns.name.replace('::', '_')}_wrap.jl", 'w') as fd:
             fd.write(code)
 
 

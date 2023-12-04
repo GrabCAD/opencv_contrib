@@ -54,14 +54,7 @@ def split_decl_name(name):
     return namespace, classes, chunks[-1]
 
 def registered_tp_search(tp):
-    found = False
-    if not tp:
-        return True
-    for tpx in registered_types:
-        if re.findall(tpx, tp):
-            found = True
-            break
-    return found
+    return True if not tp else any(re.findall(tpx, tp) for tpx in registered_types)
 
 namespaces = {}
 enums = []
@@ -97,7 +90,7 @@ class ClassInfo(ClassInfo):
         # return code for functions and setters and getters if simple class or functions and map type
 
     def get_prop_func_cpp(self, mode, propname):
-        return "jlopencv_" + self.mapped_name + "_"+mode+"_"+propname
+        return f"jlopencv_{self.mapped_name}_{mode}_{propname}"
 
     def get_getters(self):
         stra = ""
@@ -125,14 +118,14 @@ class FuncVariant(FuncVariant):
         if len(self.outlist)==0:
             return ";"
         elif len(self.outlist)==1:
-            return "return %s;" % ( ('(int)' if self.outlist[0].tp in enums else '') + self.outlist[0].name)
-        return "return make_tuple(%s);" %  ",".join(["move(%s)" %  (('(int)' if x.tp in enums else '') +x.name) for x in self.outlist])
+            return f"return {('(int)' if self.outlist[0].tp in enums else '') + self.outlist[0].name};"
+        return f"""return make_tuple({",".join([f"move({('(int)' if x.tp in enums else '') + x.name})" for x in self.outlist])});"""
 
     def get_argument(self, isalgo):
         args = self.inlist + self.optlist
         if self.classname!="" and not self.isconstructor and not self.isstatic:
             if isalgo:
-                args = [ArgInfo("cobj", ("cv::Ptr<%s>" % self.classname))] + args
+                args = [ArgInfo("cobj", f"cv::Ptr<{self.classname}>")] + args
             else:
                 args = [ArgInfo("cobj", self.classname)] + args
 
@@ -140,43 +133,37 @@ class FuncVariant(FuncVariant):
         for arg in args:
             if arg.tp in pass_by_val_types:
                 print("PATHWAY NOT TESTED")
-                argnamelist.append(arg.tp[:-1] +"& "+arg.name)
+                argnamelist.append(f"{arg.tp[:-1]}& {arg.name}")
             elif arg.tp in enums:
-                argnamelist.append("int& " + arg.name)
-            else:
-                if arg.tp=='bool':
+                argnamelist.append(f"int& {arg.name}")
+            elif arg.tp=='bool':
                     # Bool pass-by-reference is broken
-                    argnamelist.append(arg.tp+" " +arg.name)
-                else:
-                    argnamelist.append(arg.tp + "& "+arg.name)
-        # argnamelist = [(arg.tp if arg.tp not in pass_by_val_types else arg.tp[:-1]) +"& "+arg.name for arg in args]
-        argstr = ", ".join(argnamelist)
-        return argstr
+                argnamelist.append(f"{arg.tp} {arg.name}")
+            else:
+                argnamelist.append(f"{arg.tp}& {arg.name}")
+        return ", ".join(argnamelist)
 
     def get_def_outtypes(self):
         outstr = ""
         for arg in self.deflist:
-            outstr = outstr + "%s %s;"%(arg.tp if arg.tp not in pass_by_val_types else arg.tp[:-1], arg.name)
+            outstr = f"{outstr}{arg.tp if arg.tp not in pass_by_val_types else arg.tp[:-1]} {arg.name};"
         return outstr
 
     def get_retval(self, isalgo):
-        if self.rettype:
-            stra = "auto retval = "
-        else:
-            stra = ""
+        stra = "auto retval = " if self.rettype else ""
         arlist = []
         for x in self.args:
             if x.tp in pass_by_val_types:
-                arlist.append("&"+x.name)
+                arlist.append(f"&{x.name}")
             elif x.tp in enums:
-                arlist.append("(%s)%s" %(x.tp, x.name))
+                arlist.append(f"({x.tp}){x.name}")
             else:
                 arlist.append(x.name)
         argstr = ", ".join(arlist)
         if self.classname and not self.isstatic:
-            stra = stra + "cobj%s%s(%s); " %("->" if isalgo else ".",self.name.split('::')[-1], argstr)
+            stra += f"""cobj{"->" if isalgo else "."}{self.name.split('::')[-1]}({argstr}); """
         else:
-            stra = stra + "%s(%s);" % (self.name, argstr)
+            stra += f"{self.name}({argstr});"
         return stra
 
     def get_cons_code(self, name, mapped_name):
@@ -185,17 +172,22 @@ class FuncVariant(FuncVariant):
         arglist = []
         for x in self.args:
             if x.tp in pass_by_val_types:
-                arglist.append("&"+x.name)
+                arglist.append(f"&{x.name}")
             elif x.tp in enums:
-                arglist.append("(%s)%s" %(x.tp, x.name))
+                arglist.append(f"({x.tp}){x.name}")
             else:
                 arglist.append(x.name)
 
         return 'mod.method("%s", [](%s) { %s return jlcxx::create<%s>(%s);});' % (self.get_wrapper_name(), self.get_argument(False), self.get_def_outtypes(), name, " ,".join(arglist))
 
     def get_complete_code(self, classname, isalgo=False):
-        outstr = '.method("%s",  [](%s) {%s %s %s})' % (self.get_wrapper_name(), self.get_argument(isalgo),self.get_def_outtypes(), self.get_retval(isalgo), self.get_return())
-        return outstr
+        return '.method("%s",  [](%s) {%s %s %s})' % (
+            self.get_wrapper_name(),
+            self.get_argument(isalgo),
+            self.get_def_outtypes(),
+            self.get_retval(isalgo),
+            self.get_return(),
+        )
 
 
 
@@ -228,7 +220,7 @@ def gen(srcfiles):
 
             final_order = class_noinherits
 
-            while len(class_inherits)>0:
+            while class_inherits:
                 for cli in class_inherits:
                     if parent[cli[0]] not in class_inherits_names:
                         final_order.append(cli)

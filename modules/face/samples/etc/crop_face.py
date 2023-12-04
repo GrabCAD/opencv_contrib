@@ -82,22 +82,20 @@ def CropFace(image, eye_left=(0,0), eye_right=(0,0), offset_pct=(0.2,0.2), dest_
   return image
 
 def readFileNames():
-    try:
-        inFile = open('path_to_created_csv_file.csv')
-    except:
-        raise IOError('There is no file named path_to_created_csv_file.csv in current directory.')
-        return False
+  try:
+    inFile = open('path_to_created_csv_file.csv')
+  except:
+    raise IOError('There is no file named path_to_created_csv_file.csv in current directory.')
+  picPath = []
+  picIndex = []
 
-    picPath = []
-    picIndex = []
+  for line in inFile:
+    if line != '':
+        fields = line.rstrip().split(';')
+        picPath.append(fields[0])
+        picIndex.append(int(fields[1]))
 
-    for line in inFile.readlines():
-        if line != '':
-            fields = line.rstrip().split(';')
-            picPath.append(fields[0])
-            picIndex.append(int(fields[1]))
-
-    return (picPath, picIndex)
+  return (picPath, picIndex)
 
 
 if __name__ == "__main__":

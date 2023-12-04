@@ -6,17 +6,14 @@ This example shows the functionalities of lines extraction finished by LSDDetect
 USAGE: lsd_lines_extraction.py [<path_to_input_image>]
 '''
 
+
 import sys
 import cv2 as cv
 
 if __name__ == '__main__':
     print(__doc__)
 
-    if len(sys.argv) > 1:
-        fname = sys.argv[1]
-    else :
-        fname = '../data/corridor.jpg'
-
+    fname = sys.argv[1] if len(sys.argv) > 1 else '../data/corridor.jpg'
     img = cv.imread(fname)
 
     if img is None:

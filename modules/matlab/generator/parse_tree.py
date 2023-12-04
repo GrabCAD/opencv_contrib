@@ -98,44 +98,44 @@ class ParseTree(object):
         return '\n\n\n'.join(ns.__str__() for ns in self.namespaces)
 
     def build(self, namespaces):
-        babel = Translator()
-        for name, definitions in namespaces.items():
-            class_tree = {}
-            methods = []
-            constants = []
-            for defn in definitions:
-                try:
-                    obj = babel.translate(defn)
-                except Exception as e:
-                    print(e)
-                    obj = None
-                if obj is None:
-                    continue
-                if type(obj) is Class or obj.clss:
-                    self.insertIntoClassTree(obj, class_tree)
-                elif type(obj) is Method:
-                    methods.append(obj)
-                elif type(obj) is Constant:
-                    constants.append(obj)
-                else:
-                    raise TypeError('Unexpected object type: '+str(type(obj)))
-            self.namespaces.append(Namespace(name, constants, list(class_tree.values()), methods))
+      babel = Translator()
+      for name, definitions in namespaces.items():
+        class_tree = {}
+        methods = []
+        constants = []
+        for defn in definitions:
+          try:
+              obj = babel.translate(defn)
+          except Exception as e:
+              print(e)
+              obj = None
+          if obj is None:
+              continue
+          if type(obj) is Class or obj.clss:
+            self.insertIntoClassTree(obj, class_tree)
+          elif type(obj) is Method:
+              methods.append(obj)
+          elif type(obj) is Constant:
+              constants.append(obj)
+          else:
+            raise TypeError(f'Unexpected object type: {str(type(obj))}')
+        self.namespaces.append(Namespace(name, constants, list(class_tree.values()), methods))
 
     def insertIntoClassTree(self, obj, class_tree):
-        cname = obj.name if type(obj) is Class else obj.clss
-        if not cname:
-            return
-        if not cname in class_tree:
+      cname = obj.name if type(obj) is Class else obj.clss
+      if not cname:
+          return
+      if cname not in class_tree:
           # add a new class to the tree
-            class_tree[cname] = Class(cname)
-        # insert the definition into the class
-        val = class_tree[cname]
-        if type(obj) is Method:
-            val.methods.append(obj)
-        elif type(obj) is Constant:
-            val.constants.append(obj)
-        else:
-            raise TypeError('Unexpected object type: '+str(type(obj)))
+        class_tree[cname] = Class(cname)
+      # insert the definition into the class
+      val = class_tree[cname]
+      if type(obj) is Method:
+        val.methods.append(obj)
+      elif type(obj) is Constant:
+          val.constants.append(obj)
+      else:
+        raise TypeError(f'Unexpected object type: {str(type(obj))}')
 
 
 
@@ -173,46 +173,49 @@ class Translator(object):
         return Class()
 
     def translateMethod(self, defn, class_tree=None):
-        name = self.translateName(defn[0])
-        clss = self.translateClassName(defn[0])
-        rtp  = defn[1]
-        static = True if 'S' in ''.join(defn[2]) else False
-        args = defn[3]
-        req  = []
-        opt = []
-        for arg in args:
-            if arg:
-                a = self.translateArgument(arg)
-                opt.append(a) if a.default else req.append(a)
-        return Method(name, clss, static, '', rtp, False, req, opt)
+      name = self.translateName(defn[0])
+      clss = self.translateClassName(defn[0])
+      rtp  = defn[1]
+      static = 'S' in ''.join(defn[2])
+      args = defn[3]
+      req  = []
+      opt = []
+      for arg in args:
+          if arg:
+              a = self.translateArgument(arg)
+              opt.append(a) if a.default else req.append(a)
+      return Method(name, clss, static, '', rtp, False, req, opt)
 
     def translateConstant(self, defn):
-        const = True if 'const' in defn[0] else False
-        name  = self.translateName(defn[0])
-        clss  = self.translateClassName(defn[0])
-        tp    = 'int'
-        val   = defn[1]
-        return Constant(name, clss, tp, const, '', val)
+      const = 'const' in defn[0]
+      name  = self.translateName(defn[0])
+      clss  = self.translateClassName(defn[0])
+      tp    = 'int'
+      val   = defn[1]
+      return Constant(name, clss, tp, const, '', val)
 
     def translateArgument(self, defn):
-        modifiers = defn[3]
-        ref   = '*' if '*' in defn[0] else ''
-        ref   = '&' if '&' in defn[0] or '/Ref' in modifiers else ref
-        const = '/C' in modifiers
-        tp    = " ".join([word for word in defn[0].replace(ref, '').split() if not ' const ' in ' '+word+' '])
-        name = defn[1]
-        default = defn[2] if defn[2] else ''
-        I = True if '/I' in modifiers or not '/O' in modifiers else False
-        O = True if '/O' in modifiers else False
-        return Argument(name, tp, const, I, O, ref, default)
+      modifiers = defn[3]
+      ref   = '*' if '*' in defn[0] else ''
+      ref   = '&' if '&' in defn[0] or '/Ref' in modifiers else ref
+      const = '/C' in modifiers
+      tp = " ".join([
+          word for word in defn[0].replace(ref, '').split()
+          if ' const ' not in f' {word} '
+      ])
+      name = defn[1]
+      default = defn[2] if defn[2] else ''
+      I = '/I' in modifiers or '/O' not in modifiers
+      O = '/O' in modifiers
+      return Argument(name, tp, const, I, O, ref, default)
 
     def translateName(self, name):
         return name.split(' ')[-1].split('.')[-1]
 
     def translateClassName(self, name):
-        name  = name.split(' ')[-1]
-        parts = name.split('.')
-        return parts[-2] if len(parts) > 1 and not parts[-2] == 'cv' else ''
+      name  = name.split(' ')[-1]
+      parts = name.split('.')
+      return parts[-2] if len(parts) > 1 and parts[-2] != 'cv' else ''
 
 
 
@@ -232,10 +235,14 @@ class Namespace(object):
         self.methods = methods if methods else []
 
     def __str__(self):
-        return 'namespace '+self.name+' {\n\n'+\
-          ('\n'.join(c.__str__() for c in self.constants)+'\n\n' if self.constants else '')+\
-          ('\n'.join(f.__str__() for f in self.methods)+'\n\n'   if self.methods   else '')+\
-          ('\n\n'.join(o.__str__() for o in self.classes)        if self.classes   else '')+'\n};'
+      return (
+          (f'namespace {self.name}' + ' {\n\n' +
+           ('\n'.join(c.__str__()
+                      for c in self.constants) + '\n\n' if self.constants else ''))
+          + ('\n'.join(f.__str__()
+                       for f in self.methods) + '\n\n' if self.methods else '') +
+          ('\n\n'.join(o.__str__()
+                       for o in self.classes) if self.classes else '') + '\n};')
 
 class Class(object):
     """
@@ -252,9 +259,12 @@ class Class(object):
         self.methods = methods if methods else []
 
     def __str__(self):
-        return 'class '+self.name+' {\n\t'+\
-          ('\n\t'.join(c.__str__() for c in self.constants)+'\n\n\t' if self.constants else '')+\
-          ('\n\t'.join(f.__str__() for f in self.methods)            if self.methods   else '')+'\n};'
+      return ((f'class {self.name}' + ' {\n\t' +
+               ('\n\t'.join(c.__str__() for c in self.constants) +
+                '\n\n\t' if self.constants else '')) +
+              ('\n\t'.join(f.__str__()
+                           for f in self.methods) if self.methods else '') +
+              '\n};')
 
 class Method(object):
     """
@@ -273,20 +283,20 @@ class Method(object):
     opt       list of optional arguments
     """
     def __init__(self, name='', clss='', static=False, namespace='', rtp='', const=False, req=None, opt=None):
-        self.name  = name
-        self.clss  = clss
-        self.constructor = True if name == clss else False
-        self.static = static
-        self.const = const
-        self.namespace = namespace
-        self.rtp = rtp
-        self.req = req if req else []
-        self.opt = opt if opt else []
+      self.name  = name
+      self.clss  = clss
+      self.constructor = name == clss
+      self.static = static
+      self.const = const
+      self.namespace = namespace
+      self.rtp = rtp
+      self.req = req if req else []
+      self.opt = opt if opt else []
 
     def __str__(self):
-        return (self.rtp+' ' if self.rtp else '')+self.name+'('+\
-          ', '.join(arg.__str__() for arg in self.req+self.opt)+\
-          ')'+(' const' if self.const else '')+';'
+      return (((f'{self.rtp} ' if self.rtp else '') + self.name + '(' +
+               ', '.join(arg.__str__() for arg in self.req + self.opt) + ')') +
+              (' const' if self.const else '') + ';')
 
 class Argument(object):
     """
@@ -304,19 +314,19 @@ class Argument(object):
     default the default value of the argument ('' if required)
     """
     def __init__(self, name='', tp='', const=False, I=True, O=False, ref='', default=''):
-        self.name = name
-        self.tp   = tp
-        self.ref  = ref
-        self.I    = I
-        self.O    = O
-        self.const = const
-        self.default = default
-        if not tp in valid_types:
-            raise Exception("Non-supported argument type: {} (name: {})".format(tp, name))
+      self.name = name
+      self.tp   = tp
+      self.ref  = ref
+      self.I    = I
+      self.O    = O
+      self.const = const
+      self.default = default
+      if tp not in valid_types:
+        raise Exception(f"Non-supported argument type: {tp} (name: {name})")
 
     def __str__(self):
-        return ('const ' if self.const else '')+self.tp+self.ref+\
-                ' '+self.name+('='+self.default if self.default else '')
+      return (('const ' if self.const else '') + self.tp + self.ref + ' ' +
+              self.name + (f'={self.default}' if self.default else ''))
 
 class Constant(object):
     """
@@ -341,40 +351,38 @@ class Constant(object):
         self.default = default
 
     def __str__(self):
-        return ('const ' if self.const else '')+self.tp+self.ref+\
-                ' '+self.name+('='+self.default if self.default else '')+';'
+      return (('const ' if self.const else '') + self.tp + self.ref + ' ' +
+              self.name + (f'={self.default}' if self.default else '') + ';')
 
 def constants(tree):
-    """
+  """
     recursive generator to strip all Constant objects from the ParseTree
     and place them into a flat dictionary of { name, value (default) }
     """
-    if isinstance(tree, dict) and 'constants' in tree and isinstance(tree['constants'], list):
-        for node in tree['constants']:
-            yield (node['name'], node['default'])
-    if isinstance(tree, dict):
-        for key, val in tree.items():
-            for gen in constants(val):
-                yield gen
-    if isinstance(tree, list):
-        for val in tree:
-            for gen in constants(val):
-                yield gen
+  if isinstance(tree, dict) and 'constants' in tree and isinstance(tree['constants'], list):
+      for node in tree['constants']:
+          yield (node['name'], node['default'])
+  if isinstance(tree, dict):
+    for key, val in tree.items():
+      yield from constants(val)
+  if isinstance(tree, list):
+    for val in tree:
+      yield from constants(val)
 
 
 def todict(obj):
-    """
+  """
     Recursively convert a Python object graph to sequences (lists)
     and mappings (dicts) of primitives (bool, int, float, string, ...)
     """
-    if isinstance(obj, basestring):
-        return obj
-    elif isinstance(obj, dict):
-        return dict((key, todict(val)) for key, val in obj.items())
-    elif isinstance(obj, collections.Iterable):
-        return [todict(val) for val in obj]
-    elif hasattr(obj, '__dict__'):
-        return todict(vars(obj))
-    elif hasattr(obj, '__slots__'):
-        return todict(dict((name, getattr(obj, name)) for name in getattr(obj, '__slots__')))
+  if isinstance(obj, basestring):
     return obj
+  elif isinstance(obj, dict):
+    return {key: todict(val) for key, val in obj.items()}
+  elif isinstance(obj, collections.Iterable):
+      return [todict(val) for val in obj]
+  elif hasattr(obj, '__dict__'):
+      return todict(vars(obj))
+  elif hasattr(obj, '__slots__'):
+    return todict({name: getattr(obj, name) for name in getattr(obj, '__slots__')})
+  return obj

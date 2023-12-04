@@ -23,12 +23,11 @@ def union(a,b):
   return (x, y, w, h)
 
 def intersection(a,b):
-  x = max(a[0], b[0])
-  y = max(a[1], b[1])
-  w = min(a[0]+a[2], b[0]+b[2]) - x
-  h = min(a[1]+a[3], b[1]+b[3]) - y
-  if w<0 or h<0: return () # or (0,0,0,0) ?
-  return (x, y, w, h)
+    x = max(a[0], b[0])
+    y = max(a[1], b[1])
+    w = min(a[0]+a[2], b[0]+b[2]) - x
+    h = min(a[1]+a[3], b[1]+b[3]) - y
+    return () if w<0 or h<0 else (x, y, w, h)
 
 def NoisyPolygon(pRef,n):
 #    vector<Point> c
@@ -52,7 +51,7 @@ def NoisyPolygon(pRef,n):
         step = 1
         if (n != 0):
             step = d // n
-        for j in range( 1,int(d),int(max(step, 1))):
+        for j in range(1, d, int(max(step, 1))):
             while  True:
                 pAct = (u*j) / (d)
                 r = n*np.random.random_sample()

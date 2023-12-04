@@ -62,11 +62,7 @@ class VideoSynthBase(object):
     def read(self, dst=None):
         w, h = self.frame_size
 
-        if self.bg is None:
-            buf = np.zeros((h, w, 3), np.uint8)
-        else:
-            buf = self.bg.copy()
-
+        buf = np.zeros((h, w, 3), np.uint8) if self.bg is None else self.bg.copy()
         self.render(buf)
 
         if self.noise > 0.0:

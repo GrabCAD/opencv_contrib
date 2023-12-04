@@ -46,10 +46,7 @@ def rect2rect_mtx(src, dst):
     src, dst = to_rect(src), to_rect(dst)
     cx, cy = (dst[1] - dst[0]) / (src[1] - src[0])
     tx, ty = dst[0] - src[0] * (cx, cy)
-    M = np.float64([[ cx,  0, tx],
-                    [  0, cy, ty],
-                    [  0,  0,  1]])
-    return M
+    return np.float64([[cx, 0, tx], [0, cy, ty], [0, 0, 1]])
 
 
 def lookat(eye, target, up = (0, 0, 1)):

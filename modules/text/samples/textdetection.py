@@ -31,14 +31,16 @@ for c in range(0,cn):
   channels.append((255-channels[c]))
 
 # Apply the default cascade classifier to each independent channel (could be done in parallel)
-print("Extracting Class Specific Extremal Regions from "+str(len(channels))+" channels ...")
+print(
+    f"Extracting Class Specific Extremal Regions from {len(channels)} channels ..."
+)
 print("    (...) this may take a while (...)")
 for channel in channels:
 
-  erc1 = cv.text.loadClassifierNM1(pathname+'/trained_classifierNM1.xml')
+  erc1 = cv.text.loadClassifierNM1(f'{pathname}/trained_classifierNM1.xml')
   er1 = cv.text.createERFilterNM1(erc1,16,0.00015,0.13,0.2,True,0.1)
 
-  erc2 = cv.text.loadClassifierNM2(pathname+'/trained_classifierNM2.xml')
+  erc2 = cv.text.loadClassifierNM2(f'{pathname}/trained_classifierNM2.xml')
   er2 = cv.text.createERFilterNM2(erc2,0.5)
 
   regions = cv.text.detectRegions(channel,er1,er2)
